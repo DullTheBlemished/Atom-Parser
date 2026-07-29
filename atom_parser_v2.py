@@ -122,7 +122,7 @@ if __name__ == "__main__":  # allows to act as a libary and a standalone thingy 
             continue
 
         try:
-            info = parse(int(user_input[0]), int(user_input[1]), user_input[2])
+            info = parse(int(user_input[0]), int(user_input[1]), bool(user_input[2]))
 
         except IndexError:
             info = parse(int(user_input[0]), int(user_input[1]))
