@@ -1,11 +1,11 @@
-import os
-
 ORBIT_ORDER = {
         "1s": 2, "2s": 2, "2p": 6, "3s": 2, "3p": 6, "4s": 2,
         "3d": 10, "4p": 6, "5s": 2, "4d": 10, "5p": 6, "6s": 2,
         "4f": 14, "5d": 10, "6p": 6, "7s": 2, "5f": 14, "6d": 10,
         "7p": 6
         }
+
+SUBSHELL_ORDER = {'s': 1, 'p': 2, 'd': 3, 'f': 4}
 
 EXCEPTIONS = {
     # --- d-Block Transition Metal Exceptions ---
@@ -38,7 +38,20 @@ SUPERSCRIPTS = {
         '5': "⁵", '6': "⁶", '7': "⁷", '8': "⁸", '9': "⁹",
         }
 
-def parse(atomic_num: int, atomic_weight: int, real: bool = False) -> tuple:
+NOBELGASNOTATION = {
+    "1s": ("He", 2),
+    "2p": ("Ne", 10),
+    "3p": ("Ar", 18),
+    "4p": ("Kr", 36),
+    "5p": ("Xe", 54),
+    "6p": ("Rn", 86),
+    "7p": ("Og", 118)
+}
+
+class InvalidDataTypingError(Exception):
+    pass
+
+def parse(atomic_num: int, atomic_weight: int, real: bool = False) -> tuple[int, int, int, dict[str, int]]:
     """
     Calculates basic atomic properties and the electron configuration for a neutral atom.
 
@@ -110,29 +123,95 @@ def read(electron_config: dict) -> str | None:
 
     return "".join(new)
 
+def valenceElectron(electron_config: dict) -> int:
+    """
+    Calculates the total number of valence electrons for a given electron configuration.
+
+    This function identifies the outermost electron shell (the highest principal 
+    quantum number) and sums the electrons present in all subshells of that specific shell.
+
+    Args:
+        electron_config (dict): A dictionary representing the electron configuration, 
+            where keys are orbital strings (e.g., '1s', '3d') and values are the 
+            corresponding electron counts.
+
+    Returns:
+        int: The total number of valence electrons in the outermost shell.
+    """
+    outermost = 1
+    valance_electron = 0
+    for orbit in electron_config:
+        if int(orbit[0]) > outermost:
+            outermost = int(orbit[0])
+
+    for orbit in electron_config:
+        if str(outermost) in orbit:
+            valance_electron += electron_config[orbit]
+
+    return valance_electron
+
+def standardFormat(electron_config: dict) -> dict[str, int]:
+    """
+    Sorts an electron configuration dictionary into standard notation order.
+
+    The configuration is sorted first by the principal quantum number (the shell number), 
+    and then by the subshell type (s, p, d, f) using the predefined SUBSHELL_ORDER mapping.
+
+    Args:
+        electron_config (dict): An unsorted or abnormally sorted dictionary of orbitals 
+            and their electron counts.
+
+    Returns:
+        dict: A new dictionary containing the sorted electron configuration.
+    """
+    new = dict(sorted(electron_config.items(), key=lambda d: (int(d[0][:-1]), SUBSHELL_ORDER[d[0][-1]])))
+    return new
+
+def nobleGasNotation(electron_config: dict) -> tuple[str, dict[str, int]]:
+    electron_config = standardFormat(electron_config)
+    # WIP, no finish date, should be soon, however
+
 if __name__ == "__main__":  # allows to act as a libary and a standalone thingy majiggy
+    print("input exactly as so: 'atomic_num(int) atomic_weight(int) real(bool)'")
+    print("if the program detects 'break' in the input, it will kill itself")
+    print("")
     while True:
-        os.system("cls" if os.name == "nt" else "clear")
-        print("input exacally as so: 'atomic_num(int) atomic_weight(int) real(bool)'")
-        print("")
         user_input = input(">>>:").split()
+
+        if "break" in user_input:
+            break
 
         if len(user_input) < 1 or len(user_input) > 3:
             input("Invalid input")
+            print("")
+            continue
+
+        if len(user_input) != 3:
+            user_input.append(False)
+        elif user_input[2].lower() == "true":
+            user_input[2] = True
+        else:
+            user_input[2] = False
+
+        if not isinstance(user_input[0], int) or not isinstance(user_input[1], int):
+            input("Invalid input")
+            print("")
             continue
 
         try:
-            info = parse(int(user_input[0]), int(user_input[1]), bool(user_input[2]))
+            info = parse(int(user_input[0]), int(user_input[1]), user_input[2])
 
         except IndexError:
             info = parse(int(user_input[0]), int(user_input[1]))
 
         except (IndexError, ValueError):
             input("Invalid Input")
+            print("")
             continue
 
         input(f"""Proton: {info[0]}
 Neutron: {info[1]}
 Electron: {info[2]}
-Configuration: {read(info[3])}""")
+Configuration: {read(standardFormat(info[3]))}""")
+        print("")
         
