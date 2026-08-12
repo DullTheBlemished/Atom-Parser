@@ -1,11 +1,27 @@
 ORBIT_ORDER = {
-        "1s": 2, "2s": 2, "2p": 6, "3s": 2, "3p": 6, "4s": 2,
-        "3d": 10, "4p": 6, "5s": 2, "4d": 10, "5p": 6, "6s": 2,
-        "4f": 14, "5d": 10, "6p": 6, "7s": 2, "5f": 14, "6d": 10,
-        "7p": 6
-        }
+    "1s": (2, 1),
+    "2s": (2, 2),
+    "2p": (6, 3),
+    "3s": (2, 4),
+    "3p": (6, 5),
+    "4s": (2, 6),
+    "3d": (10, 7),
+    "4p": (6, 8),
+    "5s": (2, 9),
+    "4d": (10, 10),
+    "5p": (6, 11),
+    "6s": (2, 12),
+    "4f": (14, 13),
+    "5d": (10, 14),
+    "6p": (6, 15),
+    "7s": (2, 16),
+    "5f": (14, 17),
+    "6d": (10, 18),
+    "7p": (6, 19)
+}
 
-SUBSHELL_ORDER = {'s': 1, 'p': 2, 'd': 3, 'f': 4}
+
+SUBSHELL_ORDER = {'s': 1, 'p': 2, 'd': 3, 'f': 4, 'n': -1}
 
 EXCEPTIONS = {
     # --- d-Block Transition Metal Exceptions ---
@@ -38,7 +54,7 @@ SUPERSCRIPTS = {
         '5': "⁵", '6': "⁶", '7': "⁷", '8': "⁸", '9': "⁹",
         }
 
-NOBELGASNOTATION = {
+NOBLEGASNOTATION = {
     "1s": ("He", 2),
     "2p": ("Ne", 10),
     "3p": ("Ar", 18),
@@ -87,11 +103,11 @@ def parse(atomic_num: int, atomic_weight: int, real: bool = False) -> tuple[int,
     # Get electron config (real = False)
     if not real or atomic_num not in EXCEPTIONS:
         for orbit in ORBIT_ORDER:
-            if ORBIT_ORDER[orbit] <= atomic_num:
-                electron_config[orbit] = ORBIT_ORDER[orbit]
-                atomic_num -= ORBIT_ORDER[orbit]
+            if ORBIT_ORDER[orbit][0] <= atomic_num:
+                electron_config[orbit] = ORBIT_ORDER[orbit][0]
+                atomic_num -= ORBIT_ORDER[orbit][0]
 
-            elif ORBIT_ORDER[orbit] > atomic_num and atomic_num != 0:
+            elif ORBIT_ORDER[orbit][0] > atomic_num and atomic_num != 0:
                 electron_config[orbit] = atomic_num
                 atomic_num = 0
 
@@ -118,8 +134,11 @@ def read(electron_config: dict) -> str | None:
         return None
 
     for orbit, count in electron_config.items():
-        num = "".join(SUPERSCRIPTS[digit] for digit in str(count))
-        new.append(f"{orbit}{num}")
+        if orbit != "0n":
+            num = "".join(SUPERSCRIPTS[digit] for digit in str(count))
+            new.append(f"{orbit}{num}")
+        else:
+            new.append(f"[{count}] ")
 
     return "".join(new)
 
@@ -150,7 +169,7 @@ def valenceElectron(electron_config: dict) -> int:
 
     return valance_electron
 
-def standardFormat(electron_config: dict) -> dict[str, int]:
+def format(electron_config: dict, reversed: bool = False, aufbau: bool = False) -> dict[str, int]:
     """
     Sorts an electron configuration dictionary into standard notation order.
 
@@ -164,12 +183,42 @@ def standardFormat(electron_config: dict) -> dict[str, int]:
     Returns:
         dict: A new dictionary containing the sorted electron configuration.
     """
-    new = dict(sorted(electron_config.items(), key=lambda d: (int(d[0][:-1]), SUBSHELL_ORDER[d[0][-1]])))
-    return new
+    if not aufbau:
+        new = dict(sorted(electron_config.items(), key=lambda d: (int(d[0][:-1]), SUBSHELL_ORDER[d[0][-1]]), reverse=reversed))
+        return new
 
-def nobleGasNotation(electron_config: dict) -> tuple[str, dict[str, int]]:
-    electron_config = standardFormat(electron_config)
-    # WIP, no finish date, should be soon, however
+    elif aufbau:
+        new = dict(sorted(electron_config.items(), key=lambda d: (ORBIT_ORDER[d[0]][1], SUBSHELL_ORDER[d[0][-1]]), reverse=reversed))
+        return new
+    
+def nobleGasNotation(electron_config: dict) -> dict[str, int]:
+    """
+    Converts a full electron configuration into noble gas (abbreviated) notation.
+
+    This function identifies the largest complete noble gas core within the provided 
+    electron configuration. It replaces those inner-shell orbitals with the 
+    corresponding noble gas symbol, stored under the special key '"0n"', while 
+    retaining the remaining valence and outer-shell orbitals.
+
+    Args:
+        electron_config (dict): A dictionary representing the full electron 
+            configuration (e.g., {'1s': 2, '2s': 2, '2p': 6, '3s': 1}).
+
+    Returns:
+        dict: A new dictionary representing the abbreviated electron configuration,
+            where the noble gas core is keyed by '"0n"' (e.g., {'0n': 'Ne', '3s': 1}).
+    """
+
+    new = {}
+    electron_config = format(electron_config, reversed=True, aufbau=True)
+    for shell in electron_config:
+        if shell not in NOBLEGASNOTATION:
+            new[shell] = electron_config[shell]
+        elif shell in NOBLEGASNOTATION and electron_config[shell] == ORBIT_ORDER[shell][0]:
+            new["0n"] = NOBLEGASNOTATION[shell][0]
+            break
+
+    return format(new)
 
 if __name__ == "__main__":  # allows to act as a libary and a standalone thingy majiggy
     print("input exactly as so: 'atomic_num(int) atomic_weight(int) real(bool)'")
@@ -193,7 +242,12 @@ if __name__ == "__main__":  # allows to act as a libary and a standalone thingy 
         else:
             user_input[2] = False
 
-        if not isinstance(user_input[0], int) or not isinstance(user_input[1], int):
+        try:
+            if not user_input[0].isdigit() or not user_input[1].isdigit():
+                input("Invalid input")
+                print("")
+                continue
+        except AttributeError:
             input("Invalid input")
             print("")
             continue
@@ -212,6 +266,6 @@ if __name__ == "__main__":  # allows to act as a libary and a standalone thingy 
         input(f"""Proton: {info[0]}
 Neutron: {info[1]}
 Electron: {info[2]}
-Configuration: {read(standardFormat(info[3]))}""")
+Configuration: {read(format(info[3]))}""")
         print("")
         
