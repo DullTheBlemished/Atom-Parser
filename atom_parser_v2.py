@@ -157,6 +157,8 @@ def valenceElectron(electron_config: dict) -> int:
     Returns:
         int: The total number of valence electrons in the outermost shell.
     """
+    # NONONONO DONT USE THIS YET ITS FLAWED
+    
     outermost = 1
     valance_electron = 0
     for orbit in electron_config:
@@ -208,6 +210,7 @@ def nobleGasNotation(electron_config: dict) -> dict[str, int]:
         dict: A new dictionary representing the abbreviated electron configuration,
             where the noble gas core is keyed by '"0n"' (e.g., {'0n': 'Ne', '3s': 1}).
     """
+    #docstring is ai generated again
 
     new = {}
     electron_config = format(electron_config, reversed=True, aufbau=True)
